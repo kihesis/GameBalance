@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика — GameBalance{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Ваша статистика</h2>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ avg_hours }}ч</div>
+            <div class="stat-label">Среднее время</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_sessions }}</div>
+            <div class="stat-label">Сессий всего</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+        <h3>💡 Рекомендация</h3>
+        <p>Оптимальное игровое время для сохранения продуктивности — до 2.5 часов в день.</p>
+    </div>
+
+    <a href="/" class="btn" style="margin-top: 1rem; display: inline-block;">Вернуться на главную</a>
+</div>
+{% endblock %}

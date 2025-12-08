@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить сессию — GameBalance{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Добавить игровую сессию</h2>
+    <form method="POST" action="/log">
+        <div class="form-group">
+            <label for="hours" class="form-label">Сколько часов вы играли сегодня?</label>
+            <input type="number" id="hours" name="hours" min="0" max="24" step="0.25" ...>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Ваше настроение после игры:</label>
+            <div class="radio-group">
+                <label class="radio-item">
+                    <input type="radio" name="mood" value="😊 Отличное" required> 😊 Отличное
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="mood" value="😐 Нормальное"> 😐 Нормальное
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="mood" value="😞 Плохое"> 😞 Плохое
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn">Сохранить</button>
+    </form>
+</div>
+{% endblock %}
