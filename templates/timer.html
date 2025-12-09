@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Таймер — GameBalance{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>⏱️ Таймер Pomodoro</h2>
+  <p>50 минут игры → 10 минут перерыва</p>
+
+  <div style="margin: 2rem 0; text-align: center;">
+    <div id="display" style="font-size: 4rem; font-weight: 700; margin: 1rem 0; color: #4f46e5;">50:00</div>
+    <button id="control-btn" class="btn" style="background: #4f46e5;">▶ Начать</button>
+    <button id="reset-btn" class="btn" style="background: #666; margin-left: 10px;">⏹ Сбросить</button>
+  </div>
+
+  <p><strong>💡 Совет:</strong> Таймер работает даже при переключении вкладок.</p>
+</div>
+
+<!-- Звук -->
+<audio id="alarm-sound" preload="auto">
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+let startTime = null;
+let timeLeft = 50 * 60; // 50 минут в секундах
+let isRunning = false;
+let targetEndTime = null;
+let tickInterval = null;
+
+function updateDisplay() {
+  const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+  const secs = (timeLeft % 60).toString().padStart(2, '0');
+  document.getElementById('display').textContent = `${mins}:${secs}`;
+}
+
+function updateButton() {
+  const btn = document.getElementById('control-btn');
+  if (isRunning) {
+    btn.textContent = '⏸ Пауза';
+    btn.style.background = '#666';
+  } else {
+    btn.textContent = '▶ Продолжить';
+    btn.style.background = '#4f46e5';
+  }
+}
+
+function playAlarm() {
+  const audio = document.getElementById('alarm-sound');
+  audio.currentTime = 0;
+  audio.play().catch(e => console.log("Звук отключен"));
+}
+
+function tick() {
+  if (!isRunning) return;
+
+  const now = Date.now();
+  const remaining = Math.max(0, Math.floor((targetEndTime - now) / 1000));
+
+  if (remaining !== timeLeft) {
+    timeLeft = remaining;
+    updateDisplay();
+  }
+
+  if (timeLeft <= 0) {
+    stopTimer();
+    playAlarm();
+    alert('⏰ Время вышло! Сделайте перерыв.');
+  }
+}
+
+function startTimer() {
+  if (isRunning) {
+    pauseTimer();
+    return;
+  }
+
+  isRunning = true;
+  targetEndTime = Date.now() + timeLeft * 1000;
+  updateButton();
+
+  // Обновляем каждые 100 мс — даже при неактивной вкладке
+  tickInterval = setInterval(tick, 100);
+}
+
+function pauseTimer() {
+  if (!isRunning) return;
+  isRunning = false;
+  clearInterval(tickInterval);
+  updateButton();
+}
+
+function stopTimer() {
+  isRunning = false;
+  clearInterval(tickInterval);
+  updateButton();
+}
+
+function resetTimer() {
+  stopTimer();
+  timeLeft = 50 * 60;
+  updateDisplay();
+  document.getElementById('control-btn').textContent = '▶ Начать';
+  document.getElementById('control-btn').style.background = '#4f46e5';
+}
+
+// Восстановление состояния
+function loadState() {
+  const saved = sessionStorage.getItem('gamebalance_timer');
+  if (saved) {
+    const state = JSON.parse(saved);
+    timeLeft = state.timeLeft;
+    isRunning = state.isRunning;
+    updateDisplay();
+    updateButton();
+    if (isRunning) {
+      targetEndTime = Date.now() + timeLeft * 1000;
+      tickInterval = setInterval(tick, 100);
+    }
+  } else {
+    updateDisplay();
+    updateButton();
+  }
+}
+
+// Сохранение состояния
+function saveState() {
+  sessionStorage.setItem('gamebalance_timer', JSON.stringify({
+    timeLeft,
+    isRunning
+  }));
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+  loadState();
+
+  document.getElementById('control-btn').addEventListener('click', () => {
+    if (isRunning) {
+      pauseTimer();
+    } else {
+      startTimer();
+    }
+    saveState();
+  });
+
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    resetTimer();
+    sessionStorage.removeItem('gamebalance_timer');
+  });
+
+  window.addEventListener('beforeunload', saveState);
+});
+</script>
+{% endblock %}

@@ -68,6 +68,13 @@ async def stats(request: Request):
         "avg_hours": round(avg_hours or 0, 1),
         "total_sessions": total_sessions
     })
+@app.get("/timer")
+async def timer_page(request: Request):
+    return templates.TemplateResponse("timer.html", {"request": request})
+
+@app.get("/tips")
+async def tips_page(request: Request):
+    return templates.TemplateResponse("tips.html", {"request": request})
 
 
 if __name__ == "__main__":

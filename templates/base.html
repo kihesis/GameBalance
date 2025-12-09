@@ -1,41 +1,52 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}GameBalance{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}🎮 GameBalance{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <h1>🎮 GameBalance</h1>
-            <p>Осознанный гейминг без перегруза</p>
-        </div>
-    </header>
+  <div class="container">
+    <!-- Sidebar for desktop -->
+    <aside class="sidebar">
+      <div class="logo">
+        <h1 class="logo-text">🎮 GameBalance</h1>
+          <p>Осознанный гейминг без перегруза</p>
+      </div>
 
-    <nav class="nav">
-        <div class="container">
-            <ul class="nav-list">
-                <li><a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Главная</a></li>
-                <li><a href="/log" class="nav-link {% if request.url.path == '/log' %}active{% endif %}">Добавить данные</a></li>
-                <li><a href="/stats" class="nav-link {% if request.url.path == '/stats' %}active{% endif %}">Статистика</a></li>
-            </ul>
-        </div>
-    </nav>
+      <nav class="nav">
+        <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">
+          <span>🏠</span> Главная
+        </a>
+        <a href="/log" class="nav-link {% if request.url.path == '/log' %}active{% endif %}">
+          <span>📝</span> Добавить данные
+        </a>
+        <a href="/stats" class="nav-link {% if request.url.path == '/stats' %}active{% endif %}">
+          <span>📊</span> Статистика
+        </a>
+        <a href="/timer" class="nav-link {% if request.url.path == '/timer' %}active{% endif %}">
+          <span>⏱️</span> Таймер
+        </a>
+        <a href="/tips" class="nav-link {% if request.url.path == '/tips' %}active{% endif %}">
+          <span>💡</span> Советы
+        </a>
+      </nav>
+    </aside>
 
-    <main class="main">
-        <div class="container">
-            {% block content %}{% endblock %}
-        </div>
+    <!-- Main content -->
+
+      {% block content %}{% endblock %}
     </main>
+  </div>
 
-    <footer class="footer">
-        <div class="container">
-            <p>© 2026 GameBalance — Итоговый проект по информатике</p>
-        </div>
-    </footer>
+  <footer class="footer">
+    <div class="container">
+      <p>© 2025-2026 GameBalance — Итоговый проект по информатике</p>
+    </div>
+  </footer>
 
-    <script src="/static/js/script.js"></script>
+  <script src="/static/js/main.js"></script>
 </body>
 </html>

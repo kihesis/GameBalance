@@ -6,12 +6,4 @@ venv/
 # Python
 __pycache__/
 *.pyc
-
-# IDE
-.vscode/
-.idea/
-
-# ОС
-.DS_Store
-Thumbs.db
-EOFD:
+.env.local
