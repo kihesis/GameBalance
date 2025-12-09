@@ -3,6 +3,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from routers import sessions, stats, api
+from database import engine, Base
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -10,6 +13,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(sessions.router)
 app.include_router(stats.router)
 app.include_router(api.router)
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
