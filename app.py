@@ -3,10 +3,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import sqlite3
-from routers import sessions
 from datetime import datetime
 import uvicorn
 from routers import sessions, stats, api
+from models import GameSession
+from database import engine, Base, get_db
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -14,6 +17,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(sessions.router)
 app.include_router(stats.router)
 app.include_router(api.router)
+Base.metadata.create_all(bind=engine)
 
 
 # Инициализация БД
