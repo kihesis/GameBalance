@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from models import GameSession
 from routers import sessions, stats, api
 from database import engine, Base
 
@@ -13,6 +14,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(sessions.router)
 app.include_router(stats.router)
 app.include_router(api.router)
+
+@app.get("/debug/tables")
+def debug_tables():
+    inspector = inspect(engine)
+    return {"tables": inspector.get_table_names()}
 
 
 @app.get("/", response_class=HTMLResponse)
