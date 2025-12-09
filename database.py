@@ -4,17 +4,19 @@ from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 
+if not os.getenv("DATABASE_URL"):
+    load_dotenv()
 
-# Безопасное получение URL из .env
+# Только потом читаем
 DATABASE_URL = os.getenv("DATABASE_URL")
-# Только для локального запуска — можно использовать SQLite или выдать предупреждение
 if not DATABASE_URL:
-    print("❗ DATABASE_URL не задан. Используется тестовая база.")
-    DATABASE_URL = "sqlite:///./test.db"
+    raise RuntimeError("❌ DATABASE_URL не задан!")
+
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True  # Автоматически переподключается при потере соединения
+    pool_pre_ping=True
 )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
