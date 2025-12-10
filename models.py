@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, Float, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from database import Base
 from datetime import datetime, timezone
 
-Base = declarative_base()
 
 class GameSession(Base):
     __tablename__ = "game_sessions"

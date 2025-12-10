@@ -6,6 +6,8 @@ from models import GameSession
 from routers import sessions, stats, api
 from database import engine, Base
 
+assert GameSession is not None
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
