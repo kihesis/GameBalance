@@ -173,23 +173,29 @@ select:focus {
 /* Button */
 .btn {
   display: inline-block;
-  background: linear-gradient(90deg, var(--accent), #5a20ff);
+  background: #5a20ff;
   color: white;
   border: none;
-  padding: 14px 32px;
+  padding: 15px 30px;
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.6px;
-  border-radius: 12px;
+  border-radius: 13px;
   text-decoration: none;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 4px 20px rgba(126, 59, 255, 0.3);
 }
-
 .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(126, 59, 255, 0.45);
+  background: #6f3eff
+}
+.btn-secondary {
+  background: #666;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #555; /* чуть темнее */
 }
 
 /* Stats */
