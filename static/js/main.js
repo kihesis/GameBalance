@@ -8,7 +8,7 @@
     let current = timeLeft;
     tickInterval = setInterval(() => {
       current--;
-      callback(current); // обновляем UI или сохраняем
+      callback(current);
 
       if (current <= 0) {
         clearInterval(tickInterval);
@@ -18,14 +18,14 @@
     }, 1000);
   }
 
-  // Запуск при загрузке любой страницы, если таймер активен
+  // Запуск при загрузке любой страницы, если таймер активенн
   window.addEventListener('DOMContentLoaded', () => {
     const saved = sessionStorage.getItem('gamebalance_timer');
     if (saved) {
       const state = JSON.parse(saved);
       if (state.isRunning) {
         startBackgroundTimer(state.timeLeft, (newTime) => {
-          // Сохраняем обновлённое время
+          // Сохранил обновлённое время
           sessionStorage.setItem('gamebalance_timer', JSON.stringify({
             isRunning: true,
             timeLeft: newTime

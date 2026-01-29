@@ -1,17 +1,10 @@
 cat > .gitignore <<EOF
-# Виртуальное окружение
 venv/
 .env
-
-# Python
 __pycache__/
 *.pyc
-
-# IDE
 .vscode/
 .idea/
-
-# ОС
 .DS_Store
 Thumbs.db
 EOFD:

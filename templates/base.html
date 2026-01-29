@@ -7,9 +7,20 @@
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon">
 </head>
+
+<!-- Кнопки Войти / Зарегистрироваться-->
+<div class="auth-top-right">
+  {% if request.state.user %}
+    <span>Привет, {{ request.state.user.username }}!</span>
+    <a href="/logout" class="btn btn-secondary">Выйти</a>
+  {% else %}
+    <button id="login-btn" class="btn">Войти</button>
+    <button id="register-btn" class="btn">Зарегистрироваться</button>
+  {% endif %}
+</div>
+
 <body>
   <div class="container">
-    <!-- Sidebar for desktop -->
     <aside class="sidebar">
       <div class="logo">
         <h1 class="logo-text">🎮 GameBalance</h1>
@@ -35,11 +46,11 @@
       </nav>
     </aside>
 
-    <!-- Main content -->
-
       {% block content %}{% endblock %}
     </main>
   </div>
+
+
 
   <footer class="footer">
     <div class="container">

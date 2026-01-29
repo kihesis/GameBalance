@@ -1,21 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
-from typing import List
 from database import get_db
 from models import GameSession
 from schemas import GameSessionCreate, GameSessionResponse
 
 router = APIRouter(prefix="/api", tags=["tracking"])
 
-
-# 1. Добавить игровую сессию
 @router.post("/sessions", response_model=GameSessionResponse)
 def add_game_session(
         session: GameSessionCreate,
         db: Session = Depends(get_db)
 ):
-    # Если время не передано — ставим текущее
     if session.timestamp is None:
         session.timestamp = datetime.now(timezone.utc)
 
@@ -29,8 +25,6 @@ def add_game_session(
     db.refresh(db_session)
     return db_session
 
-
-# 2. Получить статистику за период
 @router.get("/stats")
 def get_stats(period: str = "day", db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
