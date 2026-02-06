@@ -2,9 +2,7 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from database import get_db
-from fastapi.responses import RedirectResponse
 from models import GameSession
-from schemas import GameSessionCreate
 import traceback
 
 router = APIRouter()
@@ -26,7 +24,7 @@ async def create_session(
 ):
     try:
         # Создаем новую сессию
-        db_session = GameSession(game_name="Dota 2", hours_played=hours)  # ← используй правильные имена полей
+        db_session = GameSession(game_name="Dota 2", hours_played=hours)
         print(f"DEBUG: Получены данные — hours={hours}, mood={mood}")
         print("DEBUG: Пытаемся сохранить в БД...")
         db.add(db_session)
@@ -45,5 +43,5 @@ async def create_session(
 
         return templates.TemplateResponse("error.html", {
             "request": request,
-            "error_message": "❌ Произошла ошибка при сохранении данных. Попробуйте позже."
+            "error_message": "Произошла ошибка при сохранении данных."
         })

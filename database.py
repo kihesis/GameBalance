@@ -9,7 +9,7 @@ if not os.getenv("DATABASE_URL"):
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise RuntimeError("❌ DATABASE_URL не задан!")
+    raise RuntimeError("DATABASE_URL не задан!")
 
 engine = create_engine(
     DATABASE_URL,

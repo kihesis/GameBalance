@@ -1,8 +1,7 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from models import GameSession
 from routers import sessions, stats, api
 from database import engine, Base
 

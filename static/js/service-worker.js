@@ -1,4 +1,3 @@
-// static/service-worker.js
 self.addEventListener('message', (event) => {
     if (event.data.action === 'startTimer') {
         const duration = event.data.duration || 50 * 60; // в секундах
