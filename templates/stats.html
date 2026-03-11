@@ -1,28 +1,514 @@
 {% extends "base.html" %}
 
-{% block title %}🎮 Статистика — GameBalance{% endblock %}
+{% block title %}🎮Статистика — GameBalance{% endblock %}
 
 {% block content %}
 <div class="card">
-    <h2>Ваша статистика</h2>
+    <h2>📊Ваша статистика</h2>
 
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-value">{{ avg_hours }}ч</div>
-            <div class="stat-label">Среднее время</div>
+            <div class="stat-value" id="total-hours">0ч</div>
+            <div class="stat-label">Всего времени</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">{{ total_sessions }}</div>
-            <div class="stat-label">Сессий всего</div>
+            <div class="stat-value" id="total-sessions">0</div>
+            <div class="stat-label">Всего сессий</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="avg-session">0м</div>
+            <div class="stat-label">Средняя сессия</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="today-hours">0ч</div>
+            <div class="stat-label">Сегодня</div>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 1.5rem;">
-        <h3>💡 Рекомендация</h3>
-        <p>Среднее время более 3ч в день может свидетельствовать о риске эмоционального истощения. <br>
-Если вы часто отмечаете плохое настроение после игр — попробуйте ввести лимит в 2 часа.</p>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="week-selector">
+                <button class="week-nav-btn" id="week-prev" title="Предыдущая неделя">←</button>
+                <div class="week-label">
+                    <span class="week-period" id="week-period-label">—</span>
+                    <span class="week-total" id="week-total-label">0ч/день</span>
+                </div>
+                <button class="week-nav-btn" id="week-next" title="Следующая неделя">→</button>
+            </div>
+
+            <div id="chart-days" class="chart-container"></div>
+        </div>
+
+        <div class="chart-card">
+            <h3>2026 год</h3>
+            <div id="chart-months" class="chart-container"></div>
+        </div>
     </div>
 
-    <a href="/" class="btn" style="margin-top: 1rem; display: inline-block;">Вернуться на главную</a>
+    <div class="card mood-section">
+        <h3>Среднее настроение</h3>
+        <div class="mood-grid">
+            <div class="mood-item">
+                <div class="mood-value" id="mood-value-all">0/10</div>
+                <div class="mood-period">За всё время</div>
+            </div>
+            <div class="mood-item">
+                <div class="mood-value" id="mood-value-month">0/10</div>
+                <div class="mood-period">За этот месяц</div>
+            </div>
+            <div class="mood-item">
+                <div class="mood-value" id="mood-value-week">0/10</div>
+                <div class="mood-period">За эту неделю</div>
+            </div>
+        </div>
+        <div class="mood-bar-container">
+            <div id="mood-bar" class="mood-bar"></div>
+        </div>
+    </div>
+
+    <div class="sessions-section">
+        <div class="sessions-header">
+            <h3>Последние сессии</h3>
+            <button id="show-all-btn" class="btn btn-secondary">Показать все</button>
+        </div>
+        <div id="sessions-list" class="sessions-list"></div>
+    </div>
+
+    <div id="sessions-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Все сессии</h3>
+                <button id="close-modal-btn" class="btn btn-secondary">Закрыть</button>
+            </div>
+            <div id="all-sessions-list" class="sessions-list"></div>
+        </div>
+    </div>
+
+    <div class="card recommendations">
+        <h3>Рекомендации</h3>
+        <div id="recommendations"></div>
+    </div>
+
+    <div class="nav-buttons">
+        <a href="/" class="btn">На главную</a>
+        <a href="/timer" class="btn btn-secondary">Таймер</a>
+        <a href="/log" class="btn btn-secondary">Добавить</a>
+    </div>
 </div>
+
+<div id="chart-tooltip" class="chart-tooltip"></div>
+
+<script>
+let allSessions = [];
+let currentWeekOffset = 0;
+const MAX_WEEK_OFFSET = 3;
+
+function formatDateLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatWeekLabel(weekStart, weekEnd, totalHours, avgPerDay) {
+  const startDay = weekStart.toLocaleDateString('ru-RU', {day: 'numeric'});
+  const endDay = weekEnd.toLocaleDateString('ru-RU', {day: 'numeric'});
+  const startMonth = weekStart.toLocaleDateString('ru-RU', {month: 'short'});
+  const endMonth = weekEnd.toLocaleDateString('ru-RU', {month: 'long'});
+  const year = weekEnd.getFullYear();
+  const currentYear = new Date().getFullYear();
+  const yearStr = year === currentYear ? '' : ' ' + year;
+
+  const monthStr = startMonth === endMonth ? endMonth : `${startMonth} – ${endMonth}`;
+  const period = `${startDay} ${monthStr} – ${endDay}${yearStr}`;
+  const hoursStr = totalHours > 0 ? avgPerDay + 'ч/день' : '0ч/день';
+
+  return { period, hours: hoursStr };
+}
+
+function getWeekTotalHours(sessions, weekStart, weekEnd) {
+  return sessions
+    .filter(s => {
+      const sessionDate = new Date(s.timestamp);
+      return sessionDate >= weekStart && sessionDate <= weekEnd;
+    })
+    .reduce((sum, s) => sum + s.hours_played, 0);
+}
+
+async function loadStats() {
+  try {
+    const response = await fetch('/api/sessions');
+    allSessions = await response.json();
+
+    if (allSessions.length === 0) {
+      document.getElementById('recommendations').innerHTML = '<p>Пока нет данных. Начните отслеживать свои игровые сессии!</p>';
+      document.getElementById('show-all-btn').style.display = 'none';
+      return;
+    }
+
+    const totalHours = allSessions.reduce((sum, s) => sum + s.hours_played, 0);
+    const totalSessions = allSessions.length;
+    const avgSession = totalHours / totalSessions;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const todaySessions = allSessions.filter(s => new Date(s.timestamp) >= today);
+    const todayHours = todaySessions.reduce((sum, s) => sum + s.hours_played, 0);
+
+    document.getElementById('total-hours').textContent = totalHours.toFixed(1) + 'ч';
+    document.getElementById('total-sessions').textContent = totalSessions;
+    document.getElementById('avg-session').textContent = Math.round(avgSession * 60) + 'м';
+    document.getElementById('today-hours').textContent = todayHours.toFixed(1) + 'ч';
+
+    renderWeekChart(allSessions, 0);
+    renderMonthChart(allSessions, yearStart);
+    renderMood(allSessions, today, weekAgo, monthAgo);
+    renderSessionsList(allSessions.slice(0, 5), 'sessions-list');
+    renderSessionsList(allSessions, 'all-sessions-list');
+    document.getElementById('show-all-btn').textContent = `Показать все (${totalSessions})`;
+    generateRecommendations(allSessions, totalHours, avgSession, todayHours);
+
+    setupWeekNavigation();
+    updateWeekNavigationButtons();
+
+  } catch (e) {
+    console.error('Ошибка загрузки статистики:', e);
+  }
+}
+
+function getWeekStart(date, offset = 0) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) - (offset * 7);
+  const weekStart = new Date(d.setDate(diff));
+  weekStart.setHours(0, 0, 0, 0);
+  return weekStart;
+}
+
+function getWeekEnd(weekStart) {
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+  return weekEnd;
+}
+
+function showTooltip(bar, content) {
+  const tooltip = document.getElementById('chart-tooltip');
+  tooltip.innerHTML = content;
+  tooltip.style.display = 'block';
+
+  setTimeout(() => {
+    tooltip.style.opacity = '1';
+  }, 10);
+
+  const rect = bar.getBoundingClientRect();
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+  tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+  tooltip.style.top = (rect.top + scrollTop - 10) + 'px';
+}
+
+function hideTooltip() {
+  const tooltip = document.getElementById('chart-tooltip');
+  tooltip.style.opacity = '0';
+  tooltip.style.display = 'none';
+}
+
+function renderWeekChart(sessions, weekOffset = 0) {
+  const weekStart = getWeekStart(new Date(), weekOffset);
+  const weekEnd = getWeekEnd(weekStart);
+
+  const totalHours = getWeekTotalHours(sessions, weekStart, weekEnd);
+
+  let daysToDivide = 7;
+
+  if (weekOffset === 0) {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    daysToDivide = dayOfWeek === 0 ? 7 : dayOfWeek;
+  }
+
+  const avgPerDay = totalHours > 0 ? (totalHours / daysToDivide).toFixed(1) : '0';
+  const labels = formatWeekLabel(weekStart, weekEnd, totalHours, avgPerDay);
+
+  document.getElementById('week-period-label').textContent = labels.period;
+  document.getElementById('week-total-label').textContent = labels.hours;
+
+  const days = {};
+  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(weekStart);
+    date.setDate(date.getDate() + i);
+    const dateStr = formatDateLocal(date);
+    days[dateStr] = {
+      date: date,
+      hours: 0,
+      dayName: dayNames[i]
+    };
+  }
+
+  sessions.forEach(s => {
+    const sessionDate = new Date(s.timestamp);
+    const dateStr = formatDateLocal(sessionDate);
+    if (days[dateStr]) {
+      days[dateStr].hours += s.hours_played;
+    }
+  });
+
+  const chartContainer = document.getElementById('chart-days');
+  chartContainer.innerHTML = '';
+
+  const maxHours = Math.max(...Object.values(days).map(d => d.hours), 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  Object.values(days).forEach((day) => {
+    const dayDate = new Date(day.date);
+    dayDate.setHours(0, 0, 0, 0);
+    const isToday = dayDate.getTime() === today.getTime();
+
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar bar-week';
+
+    if (day.hours > 0) {
+      bar.style.cssText = `
+        height: ${Math.max((day.hours / maxHours) * 150, 4)}px;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        border-radius: 4px 4px 0 0;
+        cursor: pointer;
+      `;
+
+      bar.addEventListener('mouseenter', () => {
+        const dayNameFull = day.date.toLocaleDateString('ru-RU', {weekday: 'long'});
+        const dayNum = day.date.toLocaleDateString('ru-RU', {day: 'numeric'});
+        const monthShort = day.date.toLocaleDateString('ru-RU', {month: 'short'});
+        const content = `<div class="tooltip-day">${dayNameFull}</div><div class="tooltip-date">${dayNum} ${monthShort}</div><div class="tooltip-hours">${day.hours.toFixed(1)} ч</div>`;
+        showTooltip(bar, content);
+      });
+
+      bar.addEventListener('mouseleave', hideTooltip);
+    } else {
+      bar.style.cssText = `
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px 2px 0 0;
+      `;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'chart-label';
+    label.textContent = day.dayName;
+
+    bar.appendChild(label);
+    chartContainer.appendChild(bar);
+  });
+}
+
+function renderMonthChart(sessions, yearStart) {
+  const months = {};
+  const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+  for (let i = 0; i < 12; i++) {
+    months[i] = { name: monthNames[i], hours: 0 };
+  }
+
+  sessions.forEach(s => {
+    const sessionDate = new Date(s.timestamp);
+    if (sessionDate >= yearStart) {
+      const month = sessionDate.getMonth();
+      months[month].hours += s.hours_played;
+    }
+  });
+
+  const chartContainer = document.getElementById('chart-months');
+  chartContainer.innerHTML = '';
+
+  const maxHours = Math.max(...Object.values(months).map(m => m.hours), 1);
+
+  Object.values(months).forEach(month => {
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar bar-month';
+
+    if (month.hours > 0) {
+      bar.style.cssText = `
+        height: ${Math.max((month.hours / maxHours) * 150, 4)}px;
+        background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        border-radius: 4px 4px 0 0;
+        cursor: pointer;
+      `;
+
+      bar.addEventListener('mouseenter', () => {
+        const content = `<div class="tooltip-month">${month.name}</div><div class="tooltip-hours">${month.hours.toFixed(1)} ч</div>`;
+        showTooltip(bar, content);
+      });
+
+      bar.addEventListener('mouseleave', hideTooltip);
+    } else {
+      bar.style.cssText = `
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px 2px 0 0;
+      `;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'chart-label';
+    label.textContent = month.name;
+
+    bar.appendChild(label);
+    chartContainer.appendChild(bar);
+  });
+}
+
+function renderMood(sessions, today, weekAgo, monthAgo) {
+  const allMoods = sessions.filter(s => s.mood_score !== null);
+  const monthMoods = allMoods.filter(s => new Date(s.timestamp) >= monthAgo);
+  const weekMoods = allMoods.filter(s => new Date(s.timestamp) >= weekAgo);
+
+  function calcAvg(moods) {
+    if (moods.length === 0) return 0;
+    return moods.reduce((sum, s) => sum + s.mood_score, 0) / moods.length;
+  }
+
+  const avgAll = calcAvg(allMoods);
+  const avgMonth = calcAvg(monthMoods);
+  const avgWeek = calcAvg(weekMoods);
+
+  document.getElementById('mood-value-all').textContent = allMoods.length ? avgAll.toFixed(1) + '/10' : '—';
+  document.getElementById('mood-value-month').textContent = monthMoods.length ? avgMonth.toFixed(1) + '/10' : '—';
+  document.getElementById('mood-value-week').textContent = weekMoods.length ? avgWeek.toFixed(1) + '/10' : '—';
+
+  const moodBar = document.getElementById('mood-bar');
+  moodBar.style.width = allMoods.length ? (avgAll * 10) + '%' : '0%';
+}
+
+function renderSessionsList(sessions, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  sessions.forEach(session => {
+    const date = new Date(session.timestamp);
+    const dateStr = date.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+
+    const sessionCard = document.createElement('div');
+    sessionCard.className = 'session-card';
+
+    const moodText = session.mood_score ? session.mood_score + '/10' : '—';
+    const moodClass = session.mood_score >= 7 ? 'mood-good' : session.mood_score >= 4 ? 'mood-medium' : 'mood-bad';
+
+    sessionCard.innerHTML = `
+      <div class="session-info">
+        <div class="session-game">${session.game_name}</div>
+        <div class="session-date">${dateStr}</div>
+      </div>
+      <div class="session-stats">
+        <div class="session-stat">
+          <div class="session-value">${session.hours_played.toFixed(2)}ч</div>
+          <div class="session-stat-label">Время</div>
+        </div>
+        <div class="session-stat">
+          <div class="session-value ${moodClass}">${moodText}</div>
+          <div class="session-stat-label">Настроение</div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(sessionCard);
+  });
+}
+
+function generateRecommendations(sessions, totalHours, avgSession, todayHours) {
+  const recommendations = [];
+
+  if (totalHours > 100) {
+    recommendations.push('Вы провели более 100 часов в играх. Рекомендуется сделать перерыв.');
+  }
+
+  if (avgSession > 2) {
+    recommendations.push('Среднее время сессии более 2 часов. Попробуйте технику Pomodoro (50 мин игра / 10 мин перерыв).');
+  }
+
+  if (todayHours > 4) {
+    recommendations.push('Сегодня вы играли более 4 часов. Рекомендуется остановиться и отдохнуть.');
+  }
+
+  const badMoods = sessions.filter(s => s.mood_score && s.mood_score <= 4).length;
+  if (badMoods > sessions.length * 0.3) {
+    recommendations.push('Вы часто отмечаете плохое настроение после игр. Возможно, стоит пересмотреть отношение к геймингу.');
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push('Ваш игровой баланс в норме. Продолжайте следить за временем и настроением.');
+  }
+
+  document.getElementById('recommendations').innerHTML = recommendations.map(r => '<p>' + r + '</p>').join('');
+}
+
+function setupWeekNavigation() {
+  const prevBtn = document.getElementById('week-prev');
+  const nextBtn = document.getElementById('week-next');
+
+  prevBtn.addEventListener('click', () => {
+    if (currentWeekOffset < MAX_WEEK_OFFSET) {
+      currentWeekOffset++;
+      renderWeekChart(allSessions, currentWeekOffset);
+      updateWeekNavigationButtons();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (currentWeekOffset > 0) {
+      currentWeekOffset--;
+      renderWeekChart(allSessions, currentWeekOffset);
+      updateWeekNavigationButtons();
+    }
+  });
+}
+
+function updateWeekNavigationButtons() {
+  const prevBtn = document.getElementById('week-prev');
+  const nextBtn = document.getElementById('week-next');
+
+  prevBtn.disabled = currentWeekOffset >= MAX_WEEK_OFFSET;
+  nextBtn.disabled = currentWeekOffset <= 0;
+
+  prevBtn.style.opacity = prevBtn.disabled ? '0.3' : '1';
+  prevBtn.style.cursor = prevBtn.disabled ? 'not-allowed' : 'pointer';
+
+  nextBtn.style.opacity = nextBtn.disabled ? '0.3' : '1';
+  nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+
+  const modal = document.getElementById('sessions-modal');
+  const showBtn = document.getElementById('show-all-btn');
+  const closeBtn = document.getElementById('close-modal-btn');
+
+  showBtn?.addEventListener('click', () => {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  });
+
+  closeBtn?.addEventListener('click', () => {
+    modal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+  });
+
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+  });
+});
+</script>
 {% endblock %}

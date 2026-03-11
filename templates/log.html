@@ -1,36 +1,311 @@
 {% extends "base.html" %}
 
-{% block title %}🎮 Добавить данные — GameBalance{% endblock %}
+{% block title %}🎮Добавить данные — GameBalance{% endblock %}
 
 {% block content %}
 <div class="card">
     <h2>Добавить игровую сессию</h2>
-    <form method="POST" action="/log">
+    <form method="POST" action="/log" id="session-form">
         <div class="form-group">
-            <label for="hours" class="form-label">Сколько часов вы играли сегодня?</label>
-            <input type="number" id="hours" name="hours" min="0" max="24" step="0.25" ...>
+            <label for="game_name" class="form-label">Название игры</label>
+            <input
+                type="text"
+                id="game_name"
+                name="game_name"
+                placeholder="Введите название..."
+                list="popular-games"
+                required
+                minlength="2"
+                maxlength="50"
+                class="form-input"
+                autocomplete="off"
+            >
+            <datalist id="popular-games">
+                <option value="Dota 2">Dota 2</option>
+                <option value="Counter-Strike 2">Counter-Strike 2</option>
+                <option value="League of Legends">League of Legends</option>
+                <option value="Valorant">Valorant</option>
+                <option value="Minecraft">Minecraft</option>
+                <option value="Genshin Impact">Genshin Impact</option>
+                <option value="World of Tanks">World of Tanks</option>
+                <option value="Overwatch 2">Overwatch 2</option>
+                <option value="Phasmophobia">Phasmophobia</option>
+                <option value="Chess">Chess</option>
+                <option value="Rust">Rust</option>
+            </datalist>
+            <p id="game-name-error" class="form-error"></p>
+        </div>
+
+        <div class="form-group">
+            <label for="hours" class="form-label">Сколько часов вы играли?</label>
+            <input
+                type="number"
+                id="hours"
+                name="hours"
+                min="0.25"
+                max="24"
+                step="0.25"
+                required
+                class="form-input"
+            >
+            <p id="hours-error" class="form-error"></p>
         </div>
 
         <div class="form-group">
             <label class="form-label">Ваше настроение после игры:</label>
-            <div class="radio-group">
-                <label class="radio-item">
-                    <input type="radio" name="mood" value="😊 Отличное" required> 😊 Отличное
-                </label>
-                <label class="radio-item">
-                    <input type="radio" name="mood" value="😐 Нормальное"> 😐 Нормальное
-                </label>
-                <label class="radio-item">
-                    <input type="radio" name="mood" value="😞 Плохое"> 😞 Плохое
-                </label>
-                <p>  Рекомендации по заполнению <br>
-    — Указывайте суммарное время за день в одной игре (например, Dota 2).<br>
-    — Настроение оценивайте сразу после последней игровой сессии. <br>
-    — Данные сохраняются анонимно и используются только для формирования вашей личной</p>
+
+            <div class="mood-container">
+                <div class="mood-header">
+                    <span class="mood-label-left">Плохое</span>
+                    <div id="mood-display" class="mood-display">😐 5/10</div>
+                    <span class="mood-label-right">Отличное</span>
+                </div>
+
+                <div class="slider-wrapper">
+                    <input
+                        type="range"
+                        id="mood_score"
+                        name="mood_score"
+                        min="1"
+                        max="10"
+                        value="5"
+                        required
+                        class="mood-slider"
+                        oninput="updateMoodDisplay(this.value)"
+                    >
+
+                    <div class="slider-labels">
+                        <span class="slider-label label-1">1</span>
+                        <span class="slider-label label-10">10</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <button type="submit" class="btn">Сохранить</button>
+        <div class="form-hint">
+            <strong>Рекомендации по заполнению:</strong><br>
+            — Указывайте суммарное время за день в одной игре.<br>
+            — Настроение оценивайте сразу после последней игровой сессии.<br>
+            — Данные сохраняются анонимно.
+        </div>
+
+        <button type="submit" class="btn" id="submit-btn">Сохранить</button>
     </form>
 </div>
+
+<script>
+// Правила валидации
+const validationRules = {
+    game_name: {
+        minLength: 2,
+        maxLength: 50,
+        pattern: /^[A-Za-zА-Яа-яЁё0-9\s\-\:\.\,\']+$/,
+        messages: {
+            required: 'Введите название игры',
+            minLength: 'Минимум 2 символа',
+            maxLength: 'Максимум 50 символов',
+            pattern: 'Только буквы, цифры и базовые символы',
+            numbersOnly: 'Название должно содержать буквы'
+        }
+    },
+    hours: {
+        min: 0.25,
+        max: 24,
+        step: 0.25,
+        messages: {
+            required: 'Укажите время',
+            min: 'Минимум 15 минут (0.25 часа)',
+            max: 'Максимум 24 часа',
+            step: 'Кратно 15 минутам (0.25)'
+        }
+    }
+};
+
+function showValidationSuccess(input) {
+    input.classList.remove('input-error');
+    input.classList.add('input-success');
+    const errorElement = document.getElementById(`${input.id}-error`);
+    if (errorElement) {
+        errorElement.style.display = 'none';
+    }
+}
+
+function showValidationError(input, message) {
+    input.classList.remove('input-success');
+    input.classList.add('input-error');
+    const errorElement = document.getElementById(`${input.id}-error`);
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+}
+
+// Валидация названия игры
+const gameNameInput = document.getElementById('game_name');
+
+gameNameInput.addEventListener('input', function() {
+    const value = this.value.trim();
+    this.value = value;
+
+    // Проверки
+    if (!value) {
+        showValidationError(this, validationRules.game_name.messages.required);
+        return false;
+    }
+
+    if (value.length < validationRules.game_name.minLength) {
+        showValidationError(this, validationRules.game_name.messages.minLength);
+        return false;
+    }
+
+    if (value.length > validationRules.game_name.maxLength) {
+        showValidationError(this, validationRules.game_name.messages.maxLength);
+        return false;
+    }
+
+    if (!validationRules.game_name.pattern.test(value)) {
+        showValidationError(this, validationRules.game_name.messages.pattern);
+        return false;
+    }
+
+    if (/^[0-9]+$/.test(value)) {
+        showValidationError(this, validationRules.game_name.messages.numbersOnly);
+        return false;
+    }
+
+    showValidationSuccess(this);
+    return true;
+});
+
+// Валидация часов
+const hoursInput = document.getElementById('hours');
+
+hoursInput.addEventListener('input', function() {
+    const value = parseFloat(this.value);
+
+    if (!this.value) {
+        showValidationError(this, validationRules.hours.messages.required);
+        this.style.borderColor = 'var(--border)';
+        return false;
+    }
+
+    if (isNaN(value)) {
+        showValidationError(this, 'Введите число');
+        return false;
+    }
+
+    if (value < validationRules.hours.min) {
+        showValidationError(this, validationRules.hours.messages.min);
+        this.style.borderColor = '#e74c3c';
+        return false;
+    }
+
+    if (value > validationRules.hours.max) {
+        showValidationError(this, validationRules.hours.messages.max);
+        this.style.borderColor = '#e74c3c';
+        return false;
+    }
+
+    // Цветовая индикация по времени
+    if (value > 4) {
+        this.style.borderColor = '#e74c3c'; // Красный - много
+    } else if (value > 2) {
+        this.style.borderColor = '#f39c12'; // Оранжевый - средне
+    } else {
+        this.style.borderColor = '#2ecc71'; // Зеленый - нормально
+    }
+
+    showValidationSuccess(this);
+    return true;
+});
+
+// Настроение
+function updateMoodDisplay(value) {
+    const display = document.getElementById('mood-display');
+    const emojis = {
+        1: '😡', 2: '😡', 3: '😕', 4: '😕',
+        5: '😐', 6: '😐', 7: '🙂', 8: '🙂',
+        9: '😊', 10: '😊'
+    };
+    const emoji = emojis[value] || '😐';
+    display.textContent = `${emoji} ${value}/10`;
+
+    if (value <= 3) {
+        display.className = 'mood-display mood-bad';
+    } else if (value <= 6) {
+        display.className = 'mood-display mood-medium';
+    } else {
+        display.className = 'mood-display mood-good';
+    }
+}
+
+document.getElementById('session-form').addEventListener('submit', function(e) {
+    // Запускаем валидацию вручную
+    const gameNameValue = gameNameInput.value.trim();
+    const hoursValue = parseFloat(hoursInput.value);
+
+    let hasErrors = false;
+
+    // Проверка названия
+    if (!gameNameValue || gameNameValue.length < 2) {
+        showValidationError(gameNameInput, validationRules.game_name.messages.minLength);
+        hasErrors = true;
+    } else if (gameNameValue.length > 50) {
+        showValidationError(gameNameInput, validationRules.game_name.messages.maxLength);
+        hasErrors = true;
+    } else if (!validationRules.game_name.pattern.test(gameNameValue)) {
+        showValidationError(gameNameInput, validationRules.game_name.messages.pattern);
+        hasErrors = true;
+    } else if (/^[0-9]+$/.test(gameNameValue)) {
+        showValidationError(gameNameInput, validationRules.game_name.messages.numbersOnly);
+        hasErrors = true;
+    }
+
+    // Проверка часов
+    if (!hoursValue || isNaN(hoursValue)) {
+        showValidationError(hoursInput, 'Введите число');
+        hasErrors = true;
+    } else if (hoursValue < 0.25) {
+        showValidationError(hoursInput, validationRules.hours.messages.min);
+        hasErrors = true;
+    } else if (hoursValue > 24) {
+        showValidationError(hoursInput, validationRules.hours.messages.max);
+        hasErrors = true;
+    }
+
+    if (hasErrors) {
+        e.preventDefault();
+
+        // Анимация тряски
+        document.querySelectorAll('.input-error').forEach(input => {
+            input.style.animation = 'shake 0.5s';
+            setTimeout(() => input.style.animation = '', 500);
+        });
+
+        return false;
+    }
+
+    // Подтверждение
+    const gameName = gameNameInput.value;
+    const hours = hoursInput.value;
+    const mood = document.getElementById('mood_score').value;
+
+    const confirmMsg = `Проверьте данные:\n\n🎮 Игра: ${gameName}\n⏱️ Время: ${hours} ч\n😊 Настроение: ${mood}/10\n\nСохранить?`;
+
+    if (!confirm(confirmMsg)) {
+        e.preventDefault();
+        return false;
+    }
+
+    // Блокировка кнопки
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Сохранение...';
+});
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    updateMoodDisplay(5);
+});
+</script>
 {% endblock %}

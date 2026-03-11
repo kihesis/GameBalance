@@ -7,39 +7,76 @@
 
   <div style="margin: 2rem 0; text-align: center;">
     <div id="display" style="font-size: 4rem; font-weight: 700; margin: 1rem 0; color: #4f46e5;">50:00</div>
-    <button id="control-btn" class="btn" style="background: #4f46e5;">▶ Начать</button>
-    <button id="reset-btn" class="btn btn-secondary" style="background: #666; margin-left: 10px;">⏹ Сбросить</button>
+
+    <div style="margin-top: 1rem;">
+      <button id="control-btn" class="btn">▶ Начать</button>
+      <button id="reset-btn" class="btn btn-secondary" style="margin-left: 10px;">⏹ Сбросить</button>
+      <button id="stop-btn" class="btn" style="margin-left: 10px; background: #666; opacity: 0.5; cursor: not-allowed;" disabled>✓ Завершить</button>
+    </div>
   </div>
 
-  <p><strong>💡 Подсказка:</strong> Таймер работает в фоне даже при переходе между страницами сайта.</p>
+  <p><strong>💡 Подсказка:</strong> Таймер работает в фоновом режиме.</p>
 </div>
 
-<!-- Звук -->
 <audio id="alarm-sound" preload="auto">
   <source src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" type="audio/mpeg">
 </audio>
 
+<style>
+.btn-success {
+  background: #10b981 !important;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+}
+.btn-success:hover {
+  background: #059669 !important;
+}
+</style>
+
 <script>
 let startTime = null;
-let timeLeft = 50 * 60; // 50 минут в секундах
+let timeLeft = 50 * 60;
 let isRunning = false;
 let targetEndTime = null;
 let tickInterval = null;
+let notified = false;
+let pausedTimeLeft = null;
 
 function updateDisplay() {
-  const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-  const secs = (timeLeft % 60).toString().padStart(2, '0');
-  document.getElementById('display').textContent = `${mins}:${secs}`;
+  if (isNaN(timeLeft) || timeLeft === null) {
+    timeLeft = 50 * 60;
+  }
+
+  const absTime = Math.abs(timeLeft);
+  const mins = Math.floor(absTime / 60).toString().padStart(2, '0');
+  const secs = (absTime % 60).toString().padStart(2, '0');
+
+  if (timeLeft >= 0) {
+    document.getElementById('display').textContent = `${mins}:${secs}`;
+    document.getElementById('display').style.color = '#4f46e5';
+  } else {
+    document.getElementById('display').textContent = `+${mins}:${secs}`;
+    document.getElementById('display').style.color = '#e74c3c';
+  }
 }
 
-function updateButton() {
-  const btn = document.getElementById('control-btn');
+function updateButtons() {
+  const controlBtn = document.getElementById('control-btn');
+  const stopBtn = document.getElementById('stop-btn');
+
   if (isRunning) {
-    btn.textContent = '⏸ Пауза';
-    btn.style.background = '#666';
+    controlBtn.textContent = '⏸ Пауза';
+    stopBtn.disabled = false;
+    stopBtn.style.opacity = '1';
+    stopBtn.style.cursor = 'pointer';
+    stopBtn.classList.add('btn-success');
   } else {
-    btn.textContent = '▶ Продолжить';
-    btn.style.background = '#4f46e5';
+    controlBtn.textContent = '▶ Продолжить';
+    if (startTime) {
+      stopBtn.disabled = false;
+      stopBtn.style.opacity = '1';
+      stopBtn.style.cursor = 'pointer';
+      stopBtn.classList.add('btn-success');
+    }
   }
 }
 
@@ -49,85 +86,212 @@ function playAlarm() {
   audio.play().catch(e => console.log("Звук отключен"));
 }
 
+function showNotification() {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('GameBalance', { body: '⏰ Время вышло! Сделайте перерыв.' });
+  }
+}
+
 function tick() {
   if (!isRunning) return;
 
   const now = Date.now();
-  const remaining = Math.max(0, Math.floor((targetEndTime - now) / 1000));
+  const remaining = Math.floor((targetEndTime - now) / 1000);
 
-  if (remaining !== timeLeft) {
+  if (!isNaN(remaining)) {
     timeLeft = remaining;
     updateDisplay();
   }
 
-  if (timeLeft <= 0) {
-    stopTimer();
+  if (timeLeft === 0 && !notified) {
+    showNotification();
     playAlarm();
-    alert('⏰ Время вышло! Сделайте перерыв.');
+    notified = true;
   }
 }
 
 function startTimer() {
-  if (isRunning) {
-    pauseTimer();
-    return;
+  if (tickInterval) {
+    clearInterval(tickInterval);
+  }
+
+  if (!startTime) {
+    startTime = Date.now();
+    targetEndTime = startTime + timeLeft * 1000;
+    notified = false;
+  } else if (pausedTimeLeft !== null) {
+    targetEndTime = Date.now() + pausedTimeLeft * 1000;
+    timeLeft = pausedTimeLeft;
   }
 
   isRunning = true;
-  targetEndTime = Date.now() + timeLeft * 1000;
-  updateButton();
-
-  // Обновляем каждые 100 мс — даже при неактивной вкладке
+  pausedTimeLeft = null;
+  updateButtons();
   tickInterval = setInterval(tick, 100);
+  saveState();
 }
 
 function pauseTimer() {
   if (!isRunning) return;
   isRunning = false;
-  clearInterval(tickInterval);
-  updateButton();
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
+  pausedTimeLeft = timeLeft;
+  updateButtons();
+  saveState();
 }
 
-function stopTimer() {
+async function stopTimer() {
+  if (!startTime) return;
+
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
   isRunning = false;
-  clearInterval(tickInterval);
-  updateButton();
+
+  const actualMs = Date.now() - startTime;
+  let actualHours = parseFloat((actualMs / 3600000).toFixed(2));
+
+  if (actualHours <= 0) {
+    actualHours = 0.01;
+  }
+
+  try {
+    const response = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_name: 'Dota 2',
+        hours_played: actualHours,
+        mood_score: null,
+        notes: ''
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Ошибка валидации:', errorData);
+      alert('Ошибка сохранения: ' + JSON.stringify(errorData));
+      return;
+    }
+
+    console.log('Сессия сохранена:', actualHours, 'часов');
+  } catch (e) {
+    console.error('Ошибка сети:', e);
+  }
+
+  startTime = null;
+  timeLeft = 50 * 60;
+  notified = false;
+  targetEndTime = null;
+  pausedTimeLeft = null;
+  isRunning = false;
+
+  updateDisplay();
+
+  const controlBtn = document.getElementById('control-btn');
+  const stopBtn = document.getElementById('stop-btn');
+
+  controlBtn.textContent = '▶ Начать';
+  stopBtn.disabled = true;
+  stopBtn.style.opacity = '0.5';
+  stopBtn.style.cursor = 'not-allowed';
+  stopBtn.classList.remove('btn-success');
+
+  sessionStorage.removeItem('gamebalance_timer');
+  window.location.href = '/stats';
 }
 
 function resetTimer() {
-  stopTimer();
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
+
+  isRunning = false;
+  startTime = null;
   timeLeft = 50 * 60;
+  notified = false;
+  targetEndTime = null;
+  pausedTimeLeft = null;
+
   updateDisplay();
-  document.getElementById('control-btn').textContent = '▶ Начать';
-  document.getElementById('control-btn').style.background = '#4f46e5';
+
+  const controlBtn = document.getElementById('control-btn');
+  const stopBtn = document.getElementById('stop-btn');
+
+  controlBtn.textContent = '▶ Начать';
+  stopBtn.disabled = true;
+  stopBtn.style.opacity = '0.5';
+  stopBtn.style.cursor = 'not-allowed';
+  stopBtn.classList.remove('btn-success');
+
+  sessionStorage.removeItem('gamebalance_timer');
 }
 
-// Восстановление состояния
 function loadState() {
   const saved = sessionStorage.getItem('gamebalance_timer');
   if (saved) {
-    const state = JSON.parse(saved);
-    timeLeft = state.timeLeft;
-    isRunning = state.isRunning;
-    updateDisplay();
-    updateButton();
-    if (isRunning) {
-      targetEndTime = Date.now() + timeLeft * 1000;
-      tickInterval = setInterval(tick, 100);
+    try {
+      const state = JSON.parse(saved);
+
+      startTime = state.startTime || null;
+      targetEndTime = state.targetEndTime || null;
+      isRunning = state.isRunning || false;
+      notified = state.notified || false;
+      pausedTimeLeft = state.pausedTimeLeft || null;
+
+      if (!isRunning && pausedTimeLeft !== null) {
+        timeLeft = pausedTimeLeft;
+      } else if (isRunning && targetEndTime) {
+        const now = Date.now();
+        timeLeft = Math.floor((targetEndTime - now) / 1000);
+      } else {
+        timeLeft = 50 * 60;
+      }
+
+      updateDisplay();
+      updateButtons();
+
+      if (isRunning) {
+        if (tickInterval) {
+          clearInterval(tickInterval);
+        }
+        tickInterval = setInterval(tick, 100);
+      }
+      return;
+    } catch (e) {
+      console.error('Ошибка восстановления состояния:', e);
     }
-  } else {
-    updateDisplay();
-    updateButton();
   }
+
+  timeLeft = 50 * 60;
+  updateDisplay();
+  updateButtons();
 }
 
-// Сохранение состояния
 function saveState() {
   sessionStorage.setItem('gamebalance_timer', JSON.stringify({
     timeLeft,
-    isRunning
+    isRunning,
+    startTime,
+    targetEndTime,
+    notified,
+    pausedTimeLeft
   }));
 }
+
+// Обработка переключения вкладок
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    saveState();
+  } else {
+    loadState();
+  }
+});
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
@@ -139,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       startTimer();
     }
-    saveState();
   });
 
   document.getElementById('reset-btn').addEventListener('click', () => {
@@ -147,7 +310,13 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.removeItem('gamebalance_timer');
   });
 
+  document.getElementById('stop-btn').addEventListener('click', stopTimer);
+
   window.addEventListener('beforeunload', saveState);
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 });
 </script>
 {% endblock %}
