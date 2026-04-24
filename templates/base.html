@@ -8,17 +8,6 @@
   <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon">
 </head>
 
-<!-- Кнопки Войти / Зарегистрироваться-->
-<div class="auth-top-right">
-  {% if request.state.user %}
-    <span>Привет, {{ request.state.user.username }}!</span>
-    <a href="/logout" class="btn btn-secondary">Выйти</a>
-  {% else %}
-    <button id="login-btn" class="btn">Войти</button>
-    <button id="register-btn" class="btn">Зарегистрироваться</button>
-  {% endif %}
-</div>
-
 <body>
   <div class="container">
     <aside class="sidebar">

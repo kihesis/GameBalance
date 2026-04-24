@@ -15,7 +15,7 @@ def clear_sessions():
         db.close()
 
 if __name__ == "__main__":
-    confirm = input("Вы уверены? Все данные будут удалены! (да/нет): ")
+    confirm = input("Все данные будут удалены! (да/нет): ")
     if confirm.lower() == "да":
         clear_sessions()
     else:

@@ -27,10 +27,10 @@ def ensure_cookie(request: Request, response: Response):
         response.set_cookie(
             key="gamebalance_uid",
             value=user_id,
-            httponly=False, # Поменял на False для отладки, чтобы JS видел (опционально)
+            httponly=False,
             max_age=31536000,
-            samesite="none", # Важно для локальных тестов иногда, или оставь lax
-            secure=False # Для localhost нужно False
+            samesite="none",
+            secure=False
         )
     return user_id
 

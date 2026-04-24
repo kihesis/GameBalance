@@ -12,7 +12,6 @@ templates = Jinja2Templates(directory="templates")
 async def get_stats(request: Request, db: Session = Depends(get_db)):
     user_id = request.cookies.get("gamebalance_uid")
 
-    # Если куки нет, просто показываем пустую статистику, не редиректим!
     if not user_id:
         return templates.TemplateResponse("stats.html", {
             "request": request,

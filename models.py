@@ -10,4 +10,4 @@ class GameSession(Base):
     game_name = Column(String(100), nullable=False)
     hours_played = Column(Float, nullable=False)
     mood_score = Column(Integer, nullable=True)
-    timestamp = Column(DateTime, default=datetime.now) # Важно: без timezone.utc
+    timestamp = Column(DateTime, default=datetime.now)

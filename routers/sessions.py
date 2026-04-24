@@ -89,7 +89,7 @@ async def create_session_form(
         db.commit()
         db.refresh(new_session)
 
-        print(f"УСПЕХ! Запись сохранена: ID={new_session.id}, User={user_id}, Game={game_name}, Hours={hours}")
+        print(f"Запись сохранена: ID={new_session.id}, User={user_id}, Game={game_name}, Hours={hours}")
 
         return RedirectResponse(url="/stats", status_code=303)
 
